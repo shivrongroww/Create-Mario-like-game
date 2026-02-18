@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export default function App() {
   // Game constants
@@ -8,95 +8,35 @@ export default function App() {
   const PLAYER_SIZE = 50;
   const GAME_WIDTH = 800;
   const GAME_HEIGHT = 400;
+
+  // Viewport scaling — scale the fixed-resolution game to fill the browser window
+  const [viewScale, setViewScale] = useState({ x: 1, y: 1 });
+  const updateScale = useCallback(() => {
+    setViewScale({
+      x: window.innerWidth / GAME_WIDTH,
+      y: window.innerHeight / GAME_HEIGHT,
+    });
+  }, []);
+  useEffect(() => {
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    return () => window.removeEventListener('resize', updateScale);
+  }, [updateScale]);
   const FLOOR_HEIGHT = 30;
   const COIN_SIZE = 30;
   const ENEMY_SIZE = 50;
   const ENEMY_HIT_COOLDOWN = 120;
-  const MAP_WIDTH = 4000;
+  const CHUNK_WIDTH = 500;
+  const GENERATE_AHEAD = 2;
+  const CLEANUP_BEHIND = 3;
 
   const GOAL_OPTIONS = [
-    { id: 'airplane', label: 'Airplane', target: 1000000 },
-    { id: 'phone', label: 'Phone', target: 10000 },
-    { id: 'car', label: 'Car', target: 50000 },
-    { id: 'house', label: 'House', target: 100000 },
+    { id: 'airplane', label: 'Airplane', target: 1000000, endScreen: '/assets/end-airplane.png' },
+    { id: 'phone', label: 'Phone', target: 10000, endScreen: '/assets/end-phone.png' },
+    { id: 'car', label: 'Car', target: 50000, endScreen: '/assets/end-car.png' },
+    { id: 'house', label: 'House', target: 100000, endScreen: '/assets/end-house.png' },
   ];
-  
-  // Fixed level map - grid-based definition
-  const LEVEL_MAP = [
-    // Solid ground for first 500px
-    { id: 'ground-1', type: 'ground', x: 0, y: GAME_HEIGHT - FLOOR_HEIGHT, width: 500, height: FLOOR_HEIGHT },
-    
-    // GAP (500-700)
-    
-    // Platform 1
-    { id: 'platform-1', type: 'platform', x: 700, y: 280, width: 150, height: 24 },
-    
-    // Ground segment
-    { id: 'ground-2', type: 'ground', x: 700, y: GAME_HEIGHT - FLOOR_HEIGHT, width: 200, height: FLOOR_HEIGHT },
-    
-    // GAP (900-1050)
-    
-    // Platform 2
-    { id: 'platform-2', type: 'platform', x: 1050, y: 220, width: 140, height: 24 },
-    
-    // Ground segment
-    { id: 'ground-3', type: 'ground', x: 1050, y: GAME_HEIGHT - FLOOR_HEIGHT, width: 180, height: FLOOR_HEIGHT },
-    
-    // GAP (1230-1400)
-    
-    // Platform 3
-    { id: 'platform-3', type: 'platform', x: 1400, y: 180, width: 130, height: 24 },
-    
-    // Ground segment
-    { id: 'ground-4', type: 'ground', x: 1400, y: GAME_HEIGHT - FLOOR_HEIGHT, width: 220, height: FLOOR_HEIGHT },
-    
-    // GAP (1620-1800)
-    
-    // Platform 4
-    { id: 'platform-4', type: 'platform', x: 1800, y: 240, width: 120, height: 24 },
-    
-    // Ground segment
-    { id: 'ground-5', type: 'ground', x: 1800, y: GAME_HEIGHT - FLOOR_HEIGHT, width: 170, height: FLOOR_HEIGHT },
-    
-    // GAP (1970-2150)
-    
-    // Platform 5
-    { id: 'platform-5', type: 'platform', x: 2150, y: 200, width: 150, height: 24 },
-    
-    // Ground segment
-    { id: 'ground-6', type: 'ground', x: 2150, y: GAME_HEIGHT - FLOOR_HEIGHT, width: 200, height: FLOOR_HEIGHT },
-    
-    // GAP (2350-2520)
-    
-    // Platform 6
-    { id: 'platform-6', type: 'platform', x: 2520, y: 170, width: 130, height: 24 },
-    
-    // Ground segment
-    { id: 'ground-7', type: 'ground', x: 2520, y: GAME_HEIGHT - FLOOR_HEIGHT, width: 190, height: FLOOR_HEIGHT },
-    
-    // GAP (2710-2900)
-    
-    // Platform 7
-    { id: 'platform-7', type: 'platform', x: 2900, y: 220, width: 140, height: 24 },
-    
-    // Ground segment
-    { id: 'ground-8', type: 'ground', x: 2900, y: GAME_HEIGHT - FLOOR_HEIGHT, width: 210, height: FLOOR_HEIGHT },
-    
-    // GAP (3110-3300)
-    
-    // Platform 8
-    { id: 'platform-8', type: 'platform', x: 3300, y: 190, width: 120, height: 24 },
-    
-    // Ground segment
-    { id: 'ground-9', type: 'ground', x: 3300, y: GAME_HEIGHT - FLOOR_HEIGHT, width: 180, height: FLOOR_HEIGHT },
-    
-    // GAP (3480-3650)
-    
-    // Final platform and ground
-    { id: 'platform-9', type: 'platform', x: 3650, y: 230, width: 150, height: 24 },
-    { id: 'ground-10', type: 'ground', x: 3650, y: GAME_HEIGHT - FLOOR_HEIGHT, width: 350, height: FLOOR_HEIGHT },
-  ];
-  
+
   const STOCK_LOGOS = [
     { src: '/assets/logos/ADANIGREEN.png', name: 'ADANIGREEN', value: 1800 },
     { src: '/assets/logos/SWIGGY.png', name: 'SWIGGY', value: 4200 },
@@ -108,28 +48,120 @@ export default function App() {
     { src: '/assets/logos/SBILIFE.png', name: 'SBILIFE', value: 9500 },
   ];
 
-  const FIXED_COLLECTIBLES = [
-    { id: 1, x: 250, y: 280 },
-    { id: 2, x: 450, y: 290 },
-    { id: 3, x: 750, y: 240 },
-    { id: 4, x: 1100, y: 180 },
-    { id: 5, x: 1450, y: 140 },
-    { id: 6, x: 1850, y: 200 },
-    { id: 7, x: 2200, y: 160 },
-    { id: 8, x: 2570, y: 130 },
-    { id: 9, x: 2950, y: 180 },
-    { id: 10, x: 3350, y: 150 },
-    { id: 11, x: 3700, y: 190 },
-    { id: 12, x: 3850, y: 290 },
-  ];
-  
-  const FIXED_ENEMIES = [
-    { id: 1, x: 300, direction: 1, speed: 2, minX: 100, maxX: 450 },
-    { id: 2, x: 1100, direction: -1, speed: 1.5, minX: 1050, maxX: 1200 },
-    { id: 3, x: 1850, direction: 1, speed: 2, minX: 1800, maxX: 1950 },
-    { id: 4, x: 2600, direction: -1, speed: 1.8, minX: 2520, maxX: 2680 },
-    { id: 5, x: 3400, direction: 1, speed: 2, minX: 3300, maxX: 3460 },
-  ];
+  // Seeded random for deterministic chunk generation
+  const seededRandom = (seed: number) => {
+    const x = Math.sin(seed * 9301 + 49297) * 49311;
+    return x - Math.floor(x);
+  };
+
+  type LevelObj = { id: string; type: string; x: number; y: number; width: number; height: number };
+  type Collectible = { id: number; x: number; y: number };
+  type EnemyDef = { id: number; x: number; y: number; direction: number; speed: number; minX: number; maxX: number };
+
+  const generateChunk = useCallback((chunkIndex: number) => {
+    const baseX = chunkIndex * CHUNK_WIDTH;
+    const r = (offset: number) => seededRandom(chunkIndex * 100 + offset);
+    const objects: LevelObj[] = [];
+    const coins: Collectible[] = [];
+    const enemyDefs: EnemyDef[] = [];
+
+    if (chunkIndex === 0) {
+      objects.push({ id: `g-${chunkIndex}-0`, type: 'ground', x: baseX, y: GAME_HEIGHT - FLOOR_HEIGHT, width: CHUNK_WIDTH, height: FLOOR_HEIGHT });
+      coins.push({ id: chunkIndex * 1000 + 1, x: baseX + 250, y: 280 });
+      coins.push({ id: chunkIndex * 1000 + 2, x: baseX + 450, y: 290 });
+      enemyDefs.push({ id: chunkIndex * 1000 + 1, x: baseX + 300, y: GAME_HEIGHT - FLOOR_HEIGHT - ENEMY_SIZE, direction: 1, speed: 2, minX: baseX + 100, maxX: baseX + 450 });
+      return { objects, coins, enemies: enemyDefs };
+    }
+
+    const gapStart = Math.floor(r(1) * 80) + 20;
+    const gapWidth = Math.floor(r(2) * 80) + 120;
+    const groundBeforeEnd = gapStart;
+    const groundAfterStart = gapStart + gapWidth;
+    const groundAfterWidth = CHUNK_WIDTH - groundAfterStart;
+
+    if (groundBeforeEnd > 30) {
+      objects.push({ id: `g-${chunkIndex}-a`, type: 'ground', x: baseX, y: GAME_HEIGHT - FLOOR_HEIGHT, width: groundBeforeEnd, height: FLOOR_HEIGHT });
+    }
+    if (groundAfterWidth > 30) {
+      objects.push({ id: `g-${chunkIndex}-b`, type: 'ground', x: baseX + groundAfterStart, y: GAME_HEIGHT - FLOOR_HEIGHT, width: groundAfterWidth, height: FLOOR_HEIGHT });
+    }
+
+    const platY = 170 + Math.floor(r(3) * 100);
+    const platW = 100 + Math.floor(r(4) * 60);
+    const platX = baseX + groundAfterStart + Math.floor(r(5) * Math.max(20, groundAfterWidth - platW - 20));
+    objects.push({ id: `p-${chunkIndex}`, type: 'platform', x: platX, y: platY, width: platW, height: 24 });
+
+    if (r(10) > 0.4) {
+      const platY2 = 160 + Math.floor(r(11) * 80);
+      const platW2 = 80 + Math.floor(r(12) * 50);
+      const platX2 = baseX + Math.floor(r(13) * (gapStart > 60 ? gapStart - 40 : 60));
+      objects.push({ id: `p2-${chunkIndex}`, type: 'platform', x: platX2, y: platY2, width: platW2, height: 24 });
+    }
+
+    const coinId = chunkIndex * 1000;
+    if (groundAfterWidth > 60) {
+      coins.push({ id: coinId + 1, x: baseX + groundAfterStart + 30 + Math.floor(r(6) * (groundAfterWidth - 60)), y: GAME_HEIGHT - FLOOR_HEIGHT - 50 - Math.floor(r(7) * 60) });
+    }
+    coins.push({ id: coinId + 2, x: platX + Math.floor(platW / 2) - 15, y: platY - 40 });
+
+    if (r(8) > 0.5 && groundAfterWidth > 80) {
+      const eX = baseX + groundAfterStart + 20 + Math.floor(r(9) * (groundAfterWidth - 60));
+      enemyDefs.push({
+        id: coinId + 10,
+        x: eX,
+        y: GAME_HEIGHT - FLOOR_HEIGHT - ENEMY_SIZE,
+        direction: r(14) > 0.5 ? 1 : -1,
+        speed: 1.5 + r(15) * 1,
+        minX: baseX + groundAfterStart,
+        maxX: baseX + groundAfterStart + groundAfterWidth - ENEMY_SIZE,
+      });
+    }
+
+    return { objects, coins, enemies: enemyDefs };
+  }, []);
+
+  // Dynamic level data stored in refs for instant access in the game loop
+  const levelObjectsRef = useRef<LevelObj[]>([]);
+  const collectiblesRef = useRef<Collectible[]>([]);
+  const generatedChunksRef = useRef<Set<number>>(new Set());
+
+  const [levelObjects, setLevelObjects] = useState<LevelObj[]>([]);
+  const [collectibles, setCollectibles] = useState<Collectible[]>([]);
+
+  const generateChunksAround = useCallback((offset: number) => {
+    const currentChunk = Math.floor(offset / CHUNK_WIDTH);
+    const startChunk = Math.max(0, currentChunk - 1);
+    const endChunk = currentChunk + GENERATE_AHEAD + Math.ceil(GAME_WIDTH / CHUNK_WIDTH);
+    let changed = false;
+
+    for (let i = startChunk; i <= endChunk; i++) {
+      if (!generatedChunksRef.current.has(i)) {
+        generatedChunksRef.current.add(i);
+        const chunk = generateChunk(i);
+        levelObjectsRef.current = [...levelObjectsRef.current, ...chunk.objects];
+        collectiblesRef.current = [...collectiblesRef.current, ...chunk.coins];
+        setEnemies(prev => [...prev, ...chunk.enemies]);
+        changed = true;
+      }
+    }
+
+    // Cleanup chunks far behind
+    const cleanupThreshold = (currentChunk - CLEANUP_BEHIND) * CHUNK_WIDTH;
+    if (cleanupThreshold > 0) {
+      levelObjectsRef.current = levelObjectsRef.current.filter(o => o.x + o.width > cleanupThreshold);
+      collectiblesRef.current = collectiblesRef.current.filter(c => c.x > cleanupThreshold);
+      setEnemies(prev => prev.filter(e => e.maxX > cleanupThreshold));
+      for (const ci of generatedChunksRef.current) {
+        if (ci < currentChunk - CLEANUP_BEHIND - 1) generatedChunksRef.current.delete(ci);
+      }
+      changed = true;
+    }
+
+    if (changed) {
+      setLevelObjects([...levelObjectsRef.current]);
+      setCollectibles([...collectiblesRef.current]);
+    }
+  }, [generateChunk]);
   
   const [gameStarted, setGameStarted] = useState(false);
   const [playerPos, setPlayerPos] = useState({ x: 100, y: 0 });
@@ -146,20 +178,9 @@ export default function App() {
   const [activeKeys, setActiveKeys] = useState<Set<string>>(new Set());
   const [targetScore, setTargetScore] = useState(0);
   const [goalName, setGoalName] = useState('');
+  const [endScreenImg, setEndScreenImg] = useState('');
   
-  // Enemy positions (these move, but don't generate/delete)
-  const [enemies, setEnemies] = useState(
-    FIXED_ENEMIES.map(e => {
-      // Find ground under enemy
-      const groundUnder = LEVEL_MAP.find(
-        obj => obj.type === 'ground' && 
-        e.x >= obj.x && 
-        e.x <= obj.x + obj.width
-      );
-      const yPos = groundUnder ? groundUnder.y - ENEMY_SIZE : GAME_HEIGHT - FLOOR_HEIGHT - ENEMY_SIZE;
-      return { ...e, y: yPos };
-    })
-  );
+  const [enemies, setEnemies] = useState<EnemyDef[]>([]);
   
   const keysPressed = useRef<{ [key: string]: boolean }>({});
   const gameLoopRef = useRef<number>();
@@ -235,10 +256,21 @@ export default function App() {
     }
   };
   
+  const resetLevelData = useCallback(() => {
+    generatedChunksRef.current = new Set();
+    levelObjectsRef.current = [];
+    collectiblesRef.current = [];
+    setLevelObjects([]);
+    setCollectibles([]);
+    setEnemies([]);
+    generateChunksAround(0);
+  }, [generateChunksAround]);
+
   const startWithGoal = (goal: typeof GOAL_OPTIONS[number]) => {
     setTargetScore(goal.target);
     targetScoreRef.current = goal.target;
     setGoalName(goal.label);
+    setEndScreenImg(goal.endScreen);
     setScore(0);
     scoreRef.current = 0;
     setGameStarted(true);
@@ -255,17 +287,7 @@ export default function App() {
     collectedCoinsRef.current = new Set();
     setVictory(false);
     setVictoryAnimPhase(0);
-    setEnemies(
-      FIXED_ENEMIES.map(e => {
-        const groundUnder = LEVEL_MAP.find(
-          obj => obj.type === 'ground' && 
-          e.x >= obj.x && 
-          e.x <= obj.x + obj.width
-        );
-        const yPos = groundUnder ? groundUnder.y - ENEMY_SIZE : GAME_HEIGHT - FLOOR_HEIGHT - ENEMY_SIZE;
-        return { ...e, y: yPos };
-      })
-    );
+    resetLevelData();
   };
 
   // Reset game — goes back to goal selection
@@ -286,17 +308,7 @@ export default function App() {
     collectedCoinsRef.current = new Set();
     setVictory(false);
     setVictoryAnimPhase(0);
-    setEnemies(
-      FIXED_ENEMIES.map(e => {
-        const groundUnder = LEVEL_MAP.find(
-          obj => obj.type === 'ground' && 
-          e.x >= obj.x && 
-          e.x <= obj.x + obj.width
-        );
-        const yPos = groundUnder ? groundUnder.y - ENEMY_SIZE : GAME_HEIGHT - FLOOR_HEIGHT - ENEMY_SIZE;
-        return { ...e, y: yPos };
-      })
-    );
+    resetLevelData();
   };
   
   // Check collision with collectibles
@@ -304,19 +316,20 @@ export default function App() {
     const playerCenterX = worldX + PLAYER_SIZE / 2;
     const playerCenterY = worldY + PLAYER_SIZE / 2;
     
-    FIXED_COLLECTIBLES.forEach(coin => {
+    collectiblesRef.current.forEach(coin => {
       if (!collectedCoinsRef.current.has(coin.id)) {
         const coinCenterX = coin.x + COIN_SIZE / 2;
         const coinCenterY = coin.y + COIN_SIZE / 2;
         
-        const distance = Math.sqrt(
+        const dist = Math.sqrt(
           Math.pow(playerCenterX - coinCenterX, 2) + 
           Math.pow(playerCenterY - coinCenterY, 2)
         );
         
-        if (distance < (PLAYER_SIZE / 2 + COIN_SIZE / 2)) {
+        if (dist < (PLAYER_SIZE / 2 + COIN_SIZE / 2)) {
           const stock = STOCK_LOGOS[(coin.id - 1) % STOCK_LOGOS.length];
           setCollectedCoins(prev => new Set([...prev, coin.id]));
+          collectedCoinsRef.current = new Set([...collectedCoinsRef.current, coin.id]);
           const newScore = scoreRef.current + stock.value;
           scoreRef.current = newScore;
           setScore(newScore);
@@ -375,7 +388,7 @@ export default function App() {
     const playerLeft = worldX;
     const playerRight = worldX + PLAYER_SIZE;
     
-    for (const obj of LEVEL_MAP) {
+    for (const obj of levelObjectsRef.current) {
       const objTop = obj.y;
       const objBottom = obj.y + obj.height;
       const objLeft = obj.x;
@@ -478,23 +491,15 @@ export default function App() {
       const targetPlayerX = GAME_WIDTH / 3;
       if (newX > targetPlayerX) {
         const diff = newX - targetPlayerX;
-        let newWorldOffset = worldOffsetRef.current + diff;
-        
-        // Loop the level when reaching the end
-        if (newWorldOffset >= MAP_WIDTH - GAME_WIDTH) {
-          newWorldOffset = 0;
-          worldOffsetRef.current = 0;
-          newX = 100;
-          setCollectedCoins(new Set());
-          collectedCoinsRef.current = new Set();
-        } else {
-          const actualDiff = newWorldOffset - worldOffsetRef.current;
-          newX = playerPosRef.current.x + (diff - actualDiff);
-          setDistance(prev => prev + actualDiff / 10);
-        }
+        const newWorldOffset = worldOffsetRef.current + diff;
+        const actualDiff = newWorldOffset - worldOffsetRef.current;
+        newX = playerPosRef.current.x + (diff - actualDiff);
+        setDistance(prev => prev + actualDiff / 10);
         
         setWorldOffset(newWorldOffset);
         worldOffsetRef.current = newWorldOffset;
+
+        generateChunksAround(newWorldOffset);
       }
       
       // Don't let player go too far left
@@ -604,15 +609,20 @@ export default function App() {
     };
   }, [victory]);
 
-  // Get only platforms for rendering
-  const platforms = LEVEL_MAP.filter(obj => obj.type === 'platform');
-  const groundSegments = LEVEL_MAP.filter(obj => obj.type === 'ground');
+  const platforms = levelObjects.filter(obj => obj.type === 'platform');
+  const groundSegments = levelObjects.filter(obj => obj.type === 'ground');
 
   return (
-    <div className="size-full flex items-center justify-center" style={{ backgroundColor: '#E5E7EB' }}>
+    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: '#E5E7EB' }}>
       <div 
         className="relative overflow-hidden"
-        style={{ width: GAME_WIDTH, height: GAME_HEIGHT, backgroundColor: '#F3F4F6' }}
+        style={{
+          width: GAME_WIDTH,
+          height: GAME_HEIGHT,
+          backgroundColor: '#F3F4F6',
+          transform: `scale(${viewScale.x}, ${viewScale.y})`,
+          transformOrigin: 'top left',
+        }}
       >
         {/* Parallax Background — single layer, tiled horizontally */}
         <div
@@ -679,7 +689,7 @@ export default function App() {
           ))}
           
           {/* Collectibles (Stock Logos) */}
-          {FIXED_COLLECTIBLES.map(coin => {
+          {collectibles.map(coin => {
             const stock = STOCK_LOGOS[(coin.id - 1) % STOCK_LOGOS.length];
             return !collectedCoins.has(coin.id) && (
               <div
@@ -704,15 +714,19 @@ export default function App() {
                 />
                 <div style={{
                   position: 'absolute',
-                  top: -14,
+                  top: -16,
                   left: '50%',
                   transform: 'translateX(-50%)',
-                  fontSize: 9,
+                  fontSize: 8,
                   fontWeight: 'bold',
-                  color: '#16a34a',
+                  color: '#000',
                   whiteSpace: 'nowrap',
                   fontFamily: 'monospace',
-                  textShadow: '0 0 3px rgba(0,0,0,0.6)',
+                  backgroundColor: '#FFD700',
+                  padding: '1px 6px',
+                  borderRadius: 20,
+                  border: '1px solid #DAA520',
+                  lineHeight: 1.4,
                 }}>
                   ₹{stock.value.toLocaleString()}
                 </div>
@@ -829,120 +843,129 @@ export default function App() {
           </div>
         </div>
         
-        {/* Portfolio Value Score */}
-        <div className="absolute top-4 right-4 text-gray-800 font-bold bg-white/90 px-4 py-3 rounded-lg shadow-lg">
-          <div className="text-xs text-gray-600">Portfolio Value</div>
-          <div className="text-2xl text-green-600">₹{score.toLocaleString()}</div>
+        {/* Portfolio Scoreboard */}
+        <div
+          className="absolute"
+          style={{
+            top: 10,
+            right: 10,
+            background: '#2D2D2D',
+            border: '2px solid #00D09C',
+            borderRadius: 30,
+            padding: '5px 16px 5px 10px',
+            minWidth: 200,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+          }}
+        >
+          <div style={{
+            fontFamily: 'monospace',
+            fontSize: 8,
+            fontWeight: 'bold',
+            color: '#999',
+            letterSpacing: 3,
+            textAlign: 'center',
+            marginBottom: 2,
+          }}>
+            HOLDINGS
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+            <svg width="18" height="18" viewBox="0 0 36 36" fill="none" style={{ flexShrink: 0 }}>
+              <path d="M18 4L30 16L18 32L6 16L18 4Z" fill="#6C7BFF" />
+              <path d="M18 4L30 16L18 20L6 16L18 4Z" fill="#8B9AFF" />
+              <path d="M18 4L24 10L18 16L12 10L18 4Z" fill="#AAB8FF" opacity="0.7" />
+            </svg>
+            <div style={{
+              fontFamily: 'monospace',
+              fontSize: 14,
+              fontWeight: 'bold',
+              color: '#fff',
+            }}>
+              ₹{score.toLocaleString()}
+            </div>
+          </div>
           {targetScore > 0 && (
-            <div className="text-xs text-gray-500 mt-1">
-              Goal: ₹{targetScore.toLocaleString()} ({goalName})
+            <div style={{
+              fontFamily: 'monospace',
+              fontSize: 8,
+              fontWeight: 'bold',
+              color: '#999',
+              letterSpacing: 2,
+              textAlign: 'center',
+            }}>
+              GOAL : ₹{targetScore.toLocaleString()} ({goalName.toUpperCase()})
             </div>
           )}
-          <div style={{
-            marginTop: 4,
-            height: 4,
-            borderRadius: 2,
-            backgroundColor: '#e5e7eb',
-            overflow: 'hidden',
-          }}>
-            <div style={{
-              height: '100%',
-              width: `${Math.min(100, (score / targetScore) * 100)}%`,
-              backgroundColor: '#16a34a',
-              borderRadius: 2,
-              transition: 'width 0.3s',
-            }} />
-          </div>
         </div>
         
         {/* Start Screen — Goal Selection */}
         {!gameStarted && (
           <div
-            className="absolute inset-0"
-            style={{ zIndex: 50 }}
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ zIndex: 50, backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
           >
-            <img
-              src="/assets/start-frame.png"
-              alt="Select Goal"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                imageRendering: 'pixelated',
-              }}
-            />
-            {/* Clickable option areas positioned over the image */}
-            {/* Top-left: Airplane */}
-            <button
-              onClick={() => startWithGoal(GOAL_OPTIONS[0])}
-              style={{
-                position: 'absolute',
-                left: '6%',
-                top: '40%',
-                width: '38%',
-                height: '22%',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                borderRadius: 8,
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.2)')}
-              onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
-            />
-            {/* Top-right: Phone */}
-            <button
-              onClick={() => startWithGoal(GOAL_OPTIONS[1])}
-              style={{
-                position: 'absolute',
-                right: '6%',
-                top: '40%',
-                width: '38%',
-                height: '22%',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                borderRadius: 8,
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.2)')}
-              onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
-            />
-            {/* Bottom-left: Car */}
-            <button
-              onClick={() => startWithGoal(GOAL_OPTIONS[2])}
-              style={{
-                position: 'absolute',
-                left: '6%',
-                top: '68%',
-                width: '38%',
-                height: '22%',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                borderRadius: 8,
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.2)')}
-              onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
-            />
-            {/* Bottom-right: House */}
-            <button
-              onClick={() => startWithGoal(GOAL_OPTIONS[3])}
-              style={{
-                position: 'absolute',
-                right: '6%',
-                top: '68%',
-                width: '38%',
-                height: '22%',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                borderRadius: 8,
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.2)')}
-              onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
-            />
+            <div style={{ position: 'relative', width: '37.5%', maxWidth: 250 }}>
+              <img
+                src="/assets/start-frame.png"
+                alt="Select Goal"
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  display: 'block',
+                  imageRendering: 'pixelated',
+                  borderRadius: 16,
+                }}
+              />
+              {/* Clickable option areas positioned over the image */}
+              {[
+                { goal: GOAL_OPTIONS[0], left: '6%', right: undefined, top: '40%', hover: '/assets/hover-airplane.png' },
+                { goal: GOAL_OPTIONS[1], left: undefined, right: '6%', top: '40%', hover: '/assets/hover-phone.png' },
+                { goal: GOAL_OPTIONS[2], left: '6%', right: undefined, top: '68%', hover: '/assets/hover-car.png' },
+                { goal: GOAL_OPTIONS[3], left: undefined, right: '6%', top: '68%', hover: '/assets/hover-house.png' },
+              ].map((btn, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => startWithGoal(btn.goal)}
+                  style={{
+                    position: 'absolute',
+                    left: btn.left,
+                    right: btn.right,
+                    top: btn.top,
+                    width: '38%',
+                    height: '22%',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    borderRadius: 6,
+                    padding: 0,
+                  }}
+                  onMouseEnter={(e) => {
+                    const img = e.currentTarget.querySelector('img') as HTMLImageElement;
+                    if (img) img.style.opacity = '1';
+                  }}
+                  onMouseLeave={(e) => {
+                    const img = e.currentTarget.querySelector('img') as HTMLImageElement;
+                    if (img) img.style.opacity = '0';
+                  }}
+                >
+                  <img
+                    src={btn.hover}
+                    alt=""
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'fill',
+                      imageRendering: 'pixelated',
+                      opacity: 0,
+                      transition: 'opacity 0.1s',
+                      pointerEvents: 'none',
+                    }}
+                  />
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -956,43 +979,40 @@ export default function App() {
               style={{
                 background: '#111',
                 border: '3px solid #00D09C',
-                borderRadius: 20,
-                padding: '36px 32px 28px',
-                width: 340,
+                borderRadius: 16,
+                padding: '20px 24px 18px',
+                width: 300,
                 textAlign: 'center',
                 boxShadow: '0 0 40px rgba(0, 208, 156, 0.15)',
               }}
             >
-              {/* GAME OVER title */}
               <div
                 style={{
                   fontFamily: 'monospace',
-                  fontSize: 36,
+                  fontSize: 28,
                   fontWeight: 'bold',
                   color: '#00D09C',
                   letterSpacing: 4,
                   imageRendering: 'pixelated',
-                  marginBottom: 28,
+                  marginBottom: 16,
                   textShadow: '0 0 20px rgba(0, 208, 156, 0.4)',
                 }}
               >
                 GAME OVER
               </div>
 
-              {/* Holdings card */}
               <div
                 style={{
                   background: '#1E1E1E',
-                  borderRadius: 40,
-                  padding: '16px 24px',
+                  borderRadius: 30,
+                  padding: '10px 18px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 14,
-                  marginBottom: 28,
+                  gap: 10,
+                  marginBottom: 16,
                 }}
               >
-                {/* Diamond icon */}
-                <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+                <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
                   <path d="M18 4L30 16L18 32L6 16L18 4Z" fill="#6C7BFF" />
                   <path d="M18 4L30 16L18 20L6 16L18 4Z" fill="#8B9AFF" />
                   <path d="M18 4L24 10L18 16L12 10L18 4Z" fill="#AAB8FF" opacity="0.7" />
@@ -1001,11 +1021,11 @@ export default function App() {
                   <div
                     style={{
                       fontFamily: 'monospace',
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: 'bold',
                       color: '#888',
                       letterSpacing: 2,
-                      marginBottom: 2,
+                      marginBottom: 1,
                     }}
                   >
                     HOLDINGS
@@ -1013,7 +1033,7 @@ export default function App() {
                   <div
                     style={{
                       fontFamily: 'monospace',
-                      fontSize: 24,
+                      fontSize: 20,
                       fontWeight: 'bold',
                       color: '#FFF',
                     }}
@@ -1023,18 +1043,17 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Retry button */}
               <button
                 onClick={() => resetGame(true)}
                 style={{
                   background: '#6366F1',
                   border: '3px solid #4B4EC8',
                   borderRadius: 8,
-                  padding: '14px 0',
+                  padding: '10px 0',
                   width: '100%',
                   cursor: 'pointer',
                   fontFamily: 'monospace',
-                  fontSize: 28,
+                  fontSize: 22,
                   fontWeight: 'bold',
                   color: '#5EEAD4',
                   letterSpacing: 6,
@@ -1067,35 +1086,65 @@ export default function App() {
 
         {/* Victory Screen Overlay */}
         {victory && victoryAnimPhase >= 3 && (
-          <div className="absolute inset-0 bg-black/70 flex items-center justify-center" style={{ zIndex: 50 }}>
-            <div className="bg-white rounded-2xl p-8 max-w-md text-center shadow-2xl">
-              <div className="text-6xl mb-4">🎉</div>
-              <h1 className="text-3xl font-bold text-green-600 mb-2">
-                You bought a {goalName}!
-              </h1>
-              <h2 className="text-xl font-bold text-gray-600 mb-6">
-                Portfolio target of ₹{targetScore.toLocaleString()} reached!
-              </h2>
-              
-              <div className="bg-gray-100 rounded-lg p-4 mb-6">
-                <div className="text-sm text-gray-600 mb-2">Final Portfolio Value</div>
-                <div className="text-3xl font-bold text-green-600 mb-4">
-                  ₹{score.toLocaleString()}
-                </div>
-                
-                <div className="text-sm">
-                  <div className="text-gray-500">Distance Traveled</div>
-                  <div className="font-bold text-gray-800">{Math.floor(distance)}m</div>
-                </div>
+          <div
+            className="absolute inset-0 flex flex-col items-center justify-center"
+            style={{ zIndex: 50, backgroundColor: 'rgba(0, 0, 0, 0.75)' }}
+          >
+            <div style={{ position: 'relative', maxHeight: 320, display: 'flex', justifyContent: 'center' }}>
+              <img
+                src={endScreenImg}
+                alt={`You bought a ${goalName}!`}
+                style={{
+                  maxHeight: 320,
+                  width: 'auto',
+                  display: 'block',
+                  imageRendering: 'pixelated',
+                  borderRadius: 12,
+                }}
+              />
+              <div style={{
+                position: 'absolute',
+                bottom: '9%',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '60%',
+                textAlign: 'center',
+                fontFamily: 'monospace',
+                fontWeight: 'bold',
+                fontSize: 16,
+                color: '#fff',
+                letterSpacing: 3,
+                lineHeight: 1.4,
+                backgroundColor: '#1a3a33',
+                padding: '2px 0',
+                borderRadius: 4,
+              }}>
+                {Math.floor(distance)} METER
               </div>
-              
-              <button
-                onClick={() => resetGame(true)}
-                className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-lg"
-              >
-                Play Again
-              </button>
             </div>
+            <button
+              onClick={() => resetGame(true)}
+              style={{
+                marginTop: 10,
+                background: '#00D09C',
+                border: '3px solid #00B886',
+                borderRadius: 8,
+                padding: '6px 30px',
+                cursor: 'pointer',
+                fontFamily: 'monospace',
+                fontSize: 16,
+                fontWeight: 'bold',
+                color: '#fff',
+                letterSpacing: 3,
+                imageRendering: 'pixelated',
+                transition: 'transform 0.15s',
+                boxShadow: '0 4px 0 #009B74',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.06)')}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            >
+              RESTART
+            </button>
           </div>
         )}
       </div>
