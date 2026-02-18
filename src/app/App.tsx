@@ -5,16 +5,21 @@ export default function App() {
   const GRAVITY = 0.9;
   const JUMP_STRENGTH = -14;
   const MOVE_SPEED = 5;
-  const PLAYER_SIZE = 40;
+  const PLAYER_SIZE = 50;
   const GAME_WIDTH = 800;
   const GAME_HEIGHT = 400;
   const FLOOR_HEIGHT = 30;
   const COIN_SIZE = 30;
-  const ENEMY_SIZE = 35;
+  const ENEMY_SIZE = 50;
+  const ENEMY_HIT_COOLDOWN = 120;
   const MAP_WIDTH = 4000;
-  const VICTORY_FLAG_X = 3400;
-  const VICTORY_FLAG_WIDTH = 60;
-  const VICTORY_FLAG_HEIGHT = 100;
+
+  const GOAL_OPTIONS = [
+    { id: 'airplane', label: 'Airplane', target: 1000000 },
+    { id: 'phone', label: 'Phone', target: 10000 },
+    { id: 'car', label: 'Car', target: 50000 },
+    { id: 'house', label: 'House', target: 100000 },
+  ];
   
   // Fixed level map - grid-based definition
   const LEVEL_MAP = [
@@ -24,7 +29,7 @@ export default function App() {
     // GAP (500-700)
     
     // Platform 1
-    { id: 'platform-1', type: 'platform', x: 700, y: 280, width: 150, height: 15 },
+    { id: 'platform-1', type: 'platform', x: 700, y: 280, width: 150, height: 24 },
     
     // Ground segment
     { id: 'ground-2', type: 'ground', x: 700, y: GAME_HEIGHT - FLOOR_HEIGHT, width: 200, height: FLOOR_HEIGHT },
@@ -32,7 +37,7 @@ export default function App() {
     // GAP (900-1050)
     
     // Platform 2
-    { id: 'platform-2', type: 'platform', x: 1050, y: 220, width: 140, height: 15 },
+    { id: 'platform-2', type: 'platform', x: 1050, y: 220, width: 140, height: 24 },
     
     // Ground segment
     { id: 'ground-3', type: 'ground', x: 1050, y: GAME_HEIGHT - FLOOR_HEIGHT, width: 180, height: FLOOR_HEIGHT },
@@ -40,7 +45,7 @@ export default function App() {
     // GAP (1230-1400)
     
     // Platform 3
-    { id: 'platform-3', type: 'platform', x: 1400, y: 180, width: 130, height: 15 },
+    { id: 'platform-3', type: 'platform', x: 1400, y: 180, width: 130, height: 24 },
     
     // Ground segment
     { id: 'ground-4', type: 'ground', x: 1400, y: GAME_HEIGHT - FLOOR_HEIGHT, width: 220, height: FLOOR_HEIGHT },
@@ -48,7 +53,7 @@ export default function App() {
     // GAP (1620-1800)
     
     // Platform 4
-    { id: 'platform-4', type: 'platform', x: 1800, y: 240, width: 120, height: 15 },
+    { id: 'platform-4', type: 'platform', x: 1800, y: 240, width: 120, height: 24 },
     
     // Ground segment
     { id: 'ground-5', type: 'ground', x: 1800, y: GAME_HEIGHT - FLOOR_HEIGHT, width: 170, height: FLOOR_HEIGHT },
@@ -56,7 +61,7 @@ export default function App() {
     // GAP (1970-2150)
     
     // Platform 5
-    { id: 'platform-5', type: 'platform', x: 2150, y: 200, width: 150, height: 15 },
+    { id: 'platform-5', type: 'platform', x: 2150, y: 200, width: 150, height: 24 },
     
     // Ground segment
     { id: 'ground-6', type: 'ground', x: 2150, y: GAME_HEIGHT - FLOOR_HEIGHT, width: 200, height: FLOOR_HEIGHT },
@@ -64,7 +69,7 @@ export default function App() {
     // GAP (2350-2520)
     
     // Platform 6
-    { id: 'platform-6', type: 'platform', x: 2520, y: 170, width: 130, height: 15 },
+    { id: 'platform-6', type: 'platform', x: 2520, y: 170, width: 130, height: 24 },
     
     // Ground segment
     { id: 'ground-7', type: 'ground', x: 2520, y: GAME_HEIGHT - FLOOR_HEIGHT, width: 190, height: FLOOR_HEIGHT },
@@ -72,7 +77,7 @@ export default function App() {
     // GAP (2710-2900)
     
     // Platform 7
-    { id: 'platform-7', type: 'platform', x: 2900, y: 220, width: 140, height: 15 },
+    { id: 'platform-7', type: 'platform', x: 2900, y: 220, width: 140, height: 24 },
     
     // Ground segment
     { id: 'ground-8', type: 'ground', x: 2900, y: GAME_HEIGHT - FLOOR_HEIGHT, width: 210, height: FLOOR_HEIGHT },
@@ -80,7 +85,7 @@ export default function App() {
     // GAP (3110-3300)
     
     // Platform 8
-    { id: 'platform-8', type: 'platform', x: 3300, y: 190, width: 120, height: 15 },
+    { id: 'platform-8', type: 'platform', x: 3300, y: 190, width: 120, height: 24 },
     
     // Ground segment
     { id: 'ground-9', type: 'ground', x: 3300, y: GAME_HEIGHT - FLOOR_HEIGHT, width: 180, height: FLOOR_HEIGHT },
@@ -88,10 +93,21 @@ export default function App() {
     // GAP (3480-3650)
     
     // Final platform and ground
-    { id: 'platform-9', type: 'platform', x: 3650, y: 230, width: 150, height: 15 },
+    { id: 'platform-9', type: 'platform', x: 3650, y: 230, width: 150, height: 24 },
     { id: 'ground-10', type: 'ground', x: 3650, y: GAME_HEIGHT - FLOOR_HEIGHT, width: 350, height: FLOOR_HEIGHT },
   ];
   
+  const STOCK_LOGOS = [
+    { src: '/assets/logos/ADANIGREEN.png', name: 'ADANIGREEN', value: 1800 },
+    { src: '/assets/logos/SWIGGY.png', name: 'SWIGGY', value: 4200 },
+    { src: '/assets/logos/JIOFIN.png', name: 'JIOFIN', value: 3500 },
+    { src: '/assets/logos/HINDUNILVR.png', name: 'HINDUNILVR', value: 7600 },
+    { src: '/assets/logos/PNB.png', name: 'PNB', value: 1200 },
+    { src: '/assets/logos/GODREJPROP.png', name: 'GODREJPROP', value: 5800 },
+    { src: '/assets/logos/IOC.png', name: 'IOC', value: 2400 },
+    { src: '/assets/logos/SBILIFE.png', name: 'SBILIFE', value: 9500 },
+  ];
+
   const FIXED_COLLECTIBLES = [
     { id: 1, x: 250, y: 280 },
     { id: 2, x: 450, y: 290 },
@@ -115,6 +131,7 @@ export default function App() {
     { id: 5, x: 3400, direction: 1, speed: 2, minX: 3300, maxX: 3460 },
   ];
   
+  const [gameStarted, setGameStarted] = useState(false);
   const [playerPos, setPlayerPos] = useState({ x: 100, y: 0 });
   const [playerVelocity, setPlayerVelocity] = useState({ x: 0, y: 0 });
   const [isGrounded, setIsGrounded] = useState(false);
@@ -126,6 +143,9 @@ export default function App() {
   const [collectedCoins, setCollectedCoins] = useState<Set<number>>(new Set());
   const [victory, setVictory] = useState(false);
   const [victoryAnimPhase, setVictoryAnimPhase] = useState(0);
+  const [activeKeys, setActiveKeys] = useState<Set<string>>(new Set());
+  const [targetScore, setTargetScore] = useState(0);
+  const [goalName, setGoalName] = useState('');
   
   // Enemy positions (these move, but don't generate/delete)
   const [enemies, setEnemies] = useState(
@@ -151,6 +171,9 @@ export default function App() {
   const jumpsRemainingRef = useRef(2);
   const worldOffsetRef = useRef(0);
   const collectedCoinsRef = useRef<Set<number>>(new Set());
+  const enemyHitCooldownRef = useRef(0);
+  const scoreRef = useRef(0);
+  const targetScoreRef = useRef(0);
   
   // Update refs when state changes
   useEffect(() => {
@@ -180,6 +203,14 @@ export default function App() {
   useEffect(() => {
     collectedCoinsRef.current = collectedCoins;
   }, [collectedCoins]);
+
+  useEffect(() => {
+    scoreRef.current = score;
+  }, [score]);
+
+  useEffect(() => {
+    targetScoreRef.current = targetScore;
+  }, [targetScore]);
   
   // Play sound effect
   const playSound = (frequency: number, duration: number) => {
@@ -204,17 +235,55 @@ export default function App() {
     }
   };
   
-  // Reset game
-  const resetGame = () => {
+  const startWithGoal = (goal: typeof GOAL_OPTIONS[number]) => {
+    setTargetScore(goal.target);
+    targetScoreRef.current = goal.target;
+    setGoalName(goal.label);
+    setScore(0);
+    scoreRef.current = 0;
+    setGameStarted(true);
     setPlayerPos({ x: 100, y: 0 });
     setPlayerVelocity({ x: 0, y: 0 });
-    setScore(0);
     setDistance(0);
     setGameOver(false);
     gameOverRef.current = false;
+    enemyHitCooldownRef.current = 0;
     setJumpsRemaining(2);
     setWorldOffset(0);
+    worldOffsetRef.current = 0;
     setCollectedCoins(new Set());
+    collectedCoinsRef.current = new Set();
+    setVictory(false);
+    setVictoryAnimPhase(0);
+    setEnemies(
+      FIXED_ENEMIES.map(e => {
+        const groundUnder = LEVEL_MAP.find(
+          obj => obj.type === 'ground' && 
+          e.x >= obj.x && 
+          e.x <= obj.x + obj.width
+        );
+        const yPos = groundUnder ? groundUnder.y - ENEMY_SIZE : GAME_HEIGHT - FLOOR_HEIGHT - ENEMY_SIZE;
+        return { ...e, y: yPos };
+      })
+    );
+  };
+
+  // Reset game — goes back to goal selection
+  const resetGame = (showStart = false) => {
+    setGameStarted(!showStart);
+    setPlayerPos({ x: 100, y: 0 });
+    setPlayerVelocity({ x: 0, y: 0 });
+    setScore(0);
+    scoreRef.current = 0;
+    setDistance(0);
+    setGameOver(false);
+    gameOverRef.current = false;
+    enemyHitCooldownRef.current = 0;
+    setJumpsRemaining(2);
+    setWorldOffset(0);
+    worldOffsetRef.current = 0;
+    setCollectedCoins(new Set());
+    collectedCoinsRef.current = new Set();
     setVictory(false);
     setVictoryAnimPhase(0);
     setEnemies(
@@ -246,17 +315,29 @@ export default function App() {
         );
         
         if (distance < (PLAYER_SIZE / 2 + COIN_SIZE / 2)) {
+          const stock = STOCK_LOGOS[(coin.id - 1) % STOCK_LOGOS.length];
           setCollectedCoins(prev => new Set([...prev, coin.id]));
-          setScore(prev => prev + 1000);
+          const newScore = scoreRef.current + stock.value;
+          scoreRef.current = newScore;
+          setScore(newScore);
           playSound(800, 0.2);
+          if (targetScoreRef.current > 0 && newScore >= targetScoreRef.current) {
+            gameOverRef.current = true;
+            setVictory(true);
+            playSound(600, 0.8);
+          }
         }
       }
     });
   };
   
-  // Check collision with enemies
+  // Check collision with enemies — halves portfolio on hit
   const checkEnemyCollision = (worldX: number, worldY: number, currentEnemies: typeof enemies) => {
     if (gameOverRef.current) return false;
+    if (enemyHitCooldownRef.current > 0) {
+      enemyHitCooldownRef.current--;
+      return false;
+    }
     
     const playerLeft = worldX;
     const playerRight = worldX + PLAYER_SIZE;
@@ -275,13 +356,11 @@ export default function App() {
         playerBottom > enemyTop &&
         playerTop < enemyBottom
       ) {
-        gameOverRef.current = true;
-        setGameOver(true);
-        playSound(200, 0.5);
-        setTimeout(() => {
-          alert('Game Over: Market Crash! 📉\nYour Portfolio Value: ₹' + score + '\nDistance: ' + Math.floor(distance) + 'm');
-          resetGame();
-        }, 100);
+        const halvedScore = Math.floor(scoreRef.current / 2);
+        scoreRef.current = halvedScore;
+        setScore(halvedScore);
+        enemyHitCooldownRef.current = ENEMY_HIT_COOLDOWN;
+        playSound(200, 0.3);
         return true;
       }
     }
@@ -316,6 +395,8 @@ export default function App() {
   
   // Handle keyboard input
   useEffect(() => {
+    if (!gameStarted) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
         e.preventDefault();
@@ -323,6 +404,7 @@ export default function App() {
       
       const wasPressed = keysPressed.current[e.key];
       keysPressed.current[e.key] = true;
+      setActiveKeys(prev => new Set([...prev, e.key]));
       
       // Jump - only on initial key press (not held)
       if ((e.key === 'ArrowUp' || e.key === ' ') && !wasPressed && !gameOver && jumpsRemainingRef.current > 0) {
@@ -334,6 +416,7 @@ export default function App() {
     
     const handleKeyUp = (e: KeyboardEvent) => {
       keysPressed.current[e.key] = false;
+      setActiveKeys(prev => { const next = new Set(prev); next.delete(e.key); return next; });
     };
     
     window.addEventListener('keydown', handleKeyDown);
@@ -343,11 +426,11 @@ export default function App() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [gameOver]);
+  }, [gameOver, gameStarted]);
   
   // Game loop
   useEffect(() => {
-    if (gameOver) return;
+    if (!gameStarted || gameOver) return;
     
     const gameLoop = () => {
       if (gameOverRef.current) {
@@ -395,13 +478,23 @@ export default function App() {
       const targetPlayerX = GAME_WIDTH / 3;
       if (newX > targetPlayerX) {
         const diff = newX - targetPlayerX;
-        const newWorldOffset = Math.min(worldOffsetRef.current + diff, MAP_WIDTH - GAME_WIDTH);
-        const actualDiff = newWorldOffset - worldOffsetRef.current;
-        setWorldOffset(newWorldOffset);
-        newX = playerPosRef.current.x + (diff - actualDiff);
+        let newWorldOffset = worldOffsetRef.current + diff;
         
-        // Update distance traveled
-        setDistance(prev => prev + actualDiff / 10);
+        // Loop the level when reaching the end
+        if (newWorldOffset >= MAP_WIDTH - GAME_WIDTH) {
+          newWorldOffset = 0;
+          worldOffsetRef.current = 0;
+          newX = 100;
+          setCollectedCoins(new Set());
+          collectedCoinsRef.current = new Set();
+        } else {
+          const actualDiff = newWorldOffset - worldOffsetRef.current;
+          newX = playerPosRef.current.x + (diff - actualDiff);
+          setDistance(prev => prev + actualDiff / 10);
+        }
+        
+        setWorldOffset(newWorldOffset);
+        worldOffsetRef.current = newWorldOffset;
       }
       
       // Don't let player go too far left
@@ -411,31 +504,7 @@ export default function App() {
       const worldX = newX + worldOffsetRef.current;
       const worldY = newY;
       
-      // Check victory flag collision FIRST (before any other checks)
-      if (!gameOverRef.current) {
-        const playerRight = worldX + PLAYER_SIZE;
-        const playerLeft = worldX;
-        const playerBottom = worldY + PLAYER_SIZE;
-        const playerTop = worldY;
-        
-        const flagLeft = VICTORY_FLAG_X;
-        const flagRight = VICTORY_FLAG_X + VICTORY_FLAG_WIDTH;
-        const flagTop = GAME_HEIGHT - FLOOR_HEIGHT - VICTORY_FLAG_HEIGHT;
-        const flagBottom = GAME_HEIGHT - FLOOR_HEIGHT + 50; // Extended collision area
-        
-        // More lenient collision check - if player is anywhere near the flag
-        if (
-          playerRight > flagLeft &&
-          playerLeft < flagRight &&
-          worldX >= VICTORY_FLAG_X - 20 // Give extra buffer on the left
-        ) {
-          // Victory!
-          gameOverRef.current = true;
-          setVictory(true);
-          playSound(600, 0.8);
-          return;
-        }
-      }
+      // Victory is checked immediately when collecting a stock in checkCollectibleCollision
       
       let grounded = false;
       
@@ -452,14 +521,6 @@ export default function App() {
         gameOverRef.current = true;
         setGameOver(true);
         playSound(150, 0.7);
-        
-        // Show alert immediately
-        alert('💥 Market Crash! You fell into a ditch!\n\nYour Portfolio Value: ₹' + score + '\nDistance: ' + Math.floor(distance) + 'm');
-        
-        // Reset after 2 seconds
-        setTimeout(() => {
-          resetGame();
-        }, 2000);
         return;
       }
       
@@ -498,7 +559,7 @@ export default function App() {
         cancelAnimationFrame(gameLoopRef.current);
       }
     };
-  }, [gameOver]);
+  }, [gameOver, gameStarted]);
 
   // Victory animation effect
   useEffect(() => {
@@ -553,187 +614,19 @@ export default function App() {
         className="relative overflow-hidden"
         style={{ width: GAME_WIDTH, height: GAME_HEIGHT, backgroundColor: '#F3F4F6' }}
       >
-        {/* Office Background Layers */}
-        
-        {/* Background Wall - Light Office Wall */}
-        <div 
+        {/* Parallax Background — single layer, tiled horizontally */}
+        <div
           style={{
             position: 'absolute',
-            left: -(worldOffset % 100),
             top: 0,
-            width: MAP_WIDTH + 200,
-            height: '100%',
-            backgroundColor: '#F0F4F8',
-          }}
-        />
-        
-        {/* Brick Accent Wall Pattern */}
-        <div 
-          style={{
-            position: 'absolute',
-            left: -(worldOffset % 80),
-            top: 0,
-            width: MAP_WIDTH + 200,
-            height: 60,
-            backgroundImage: `
-              repeating-linear-gradient(
-                0deg,
-                #C4A57B 0px,
-                #C4A57B 1px,
-                transparent 1px,
-                transparent 20px
-              ),
-              repeating-linear-gradient(
-                90deg,
-                #D4B896 0px,
-                #D4B896 1px,
-                transparent 1px,
-                transparent 40px
-              ),
-              repeating-linear-gradient(
-                90deg,
-                #C4A57B 0px,
-                #C4A57B 39px,
-                #A08966 39px,
-                #A08966 40px
-              )
-            `,
-            backgroundColor: '#D4B896',
-            borderBottom: '2px solid #A08966',
-          }}
-        />
-        
-        {/* Windows Pattern - Repeating Office Windows */}
-        <div 
-          style={{
-            position: 'absolute',
-            left: -(worldOffset % 300),
-            top: 80,
-            width: MAP_WIDTH + 600,
-            height: 150,
-            backgroundImage: `
-              repeating-linear-gradient(
-                90deg,
-                transparent 0px,
-                transparent 40px,
-                #87CEEB 40px,
-                #87CEEB 140px,
-                transparent 140px,
-                transparent 180px,
-                #87CEEB 180px,
-                #87CEEB 280px,
-                transparent 280px,
-                transparent 300px
-              )
-            `,
-            pointerEvents: 'none',
-          }}
-        >
-          {/* Window frames */}
-          {Array.from({ length: 30 }).map((_, i) => (
-            <div key={i}>
-              {/* Window 1 */}
-              <div
-                style={{
-                  position: 'absolute',
-                  left: i * 300 + 40,
-                  top: 0,
-                  width: 100,
-                  height: 150,
-                  border: '4px solid #4A5568',
-                  backgroundColor: '#B8E6FF',
-                  boxShadow: 'inset 0 0 20px rgba(255,255,255,0.5)',
-                }}
-              >
-                {/* Window divider */}
-                <div style={{
-                  position: 'absolute',
-                  left: '50%',
-                  top: 0,
-                  width: 4,
-                  height: '100%',
-                  backgroundColor: '#4A5568',
-                  transform: 'translateX(-50%)',
-                }} />
-                <div style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: '50%',
-                  width: '100%',
-                  height: 4,
-                  backgroundColor: '#4A5568',
-                  transform: 'translateY(-50%)',
-                }} />
-                
-                {/* Cloud reflection */}
-                <div style={{
-                  position: 'absolute',
-                  left: 10,
-                  top: 20,
-                  width: 30,
-                  height: 15,
-                  backgroundColor: 'rgba(255,255,255,0.6)',
-                  borderRadius: '50%',
-                }} />
-              </div>
-              
-              {/* Window 2 */}
-              <div
-                style={{
-                  position: 'absolute',
-                  left: i * 300 + 180,
-                  top: 0,
-                  width: 100,
-                  height: 150,
-                  border: '4px solid #4A5568',
-                  backgroundColor: '#B8E6FF',
-                  boxShadow: 'inset 0 0 20px rgba(255,255,255,0.5)',
-                }}
-              >
-                {/* Window divider */}
-                <div style={{
-                  position: 'absolute',
-                  left: '50%',
-                  top: 0,
-                  width: 4,
-                  height: '100%',
-                  backgroundColor: '#4A5568',
-                  transform: 'translateX(-50%)',
-                }} />
-                <div style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: '50%',
-                  width: '100%',
-                  height: 4,
-                  backgroundColor: '#4A5568',
-                  transform: 'translateY(-50%)',
-                }} />
-                
-                {/* Cloud reflection */}
-                <div style={{
-                  position: 'absolute',
-                  left: 60,
-                  top: 30,
-                  width: 25,
-                  height: 12,
-                  backgroundColor: 'rgba(255,255,255,0.6)',
-                  borderRadius: '50%',
-                }} />
-              </div>
-            </div>
-          ))}
-        </div>
-        
-        {/* Vertical Line Pattern (Wall Panels) */}
-        <div 
-          style={{
-            position: 'absolute',
-            left: -(worldOffset % 100),
-            top: 0,
+            left: 0,
             width: '100%',
             height: '100%',
-            backgroundImage: 'repeating-linear-gradient(90deg, transparent 0px, transparent 99px, rgba(0,0,0,0.05) 99px, rgba(0,0,0,0.05) 100px)',
+            backgroundImage: 'url(/assets/background.png)',
+            backgroundRepeat: 'repeat-x',
+            backgroundSize: 'auto 100%',
+            backgroundPositionX: -(worldOffset * 0.4),
+            backgroundPositionY: 0,
             pointerEvents: 'none',
           }}
         />
@@ -749,63 +642,7 @@ export default function App() {
             transition: 'none',
           }}
         >
-          {/* Company Logos Placed Throughout Office */}
-          {[200, 800, 1400, 2000, 2600, 3200, 3700].map((xPos, idx) => (
-            <div
-              key={`logo-${idx}`}
-              style={{
-                position: 'absolute',
-                left: xPos,
-                top: 250,
-                width: 80,
-                height: 80,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {/* Groww Logo - Green Circle with G */}
-              <div
-                style={{
-                  width: 70,
-                  height: 70,
-                  borderRadius: '50%',
-                  backgroundColor: '#00D09C',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 4px 10px rgba(0,208,156,0.3)',
-                  border: '3px solid #00B886',
-                }}
-              >
-                <span style={{
-                  fontSize: '32px',
-                  fontWeight: 'bold',
-                  color: 'white',
-                  fontFamily: 'Arial, sans-serif',
-                }}>
-                  G
-                </span>
-              </div>
-            </div>
-          ))}
-          
-          {/* Office Plants for Decoration */}
-          {[350, 1200, 2100, 2800, 3500].map((xPos, idx) => (
-            <div
-              key={`plant-${idx}`}
-              style={{
-                position: 'absolute',
-                left: xPos,
-                top: GAME_HEIGHT - FLOOR_HEIGHT - 45,
-                fontSize: '40px',
-              }}
-            >
-              🪴
-            </div>
-          ))}
-          
-          {/* Ground Segments (Dark Office Carpet) */}
+          {/* Ground Segments */}
           {groundSegments.map((ground) => (
             <div
               key={ground.id}
@@ -815,63 +652,39 @@ export default function App() {
                 top: ground.y,
                 width: ground.width,
                 height: ground.height,
-                background: 'linear-gradient(180deg, #374151 0%, #1F2937 100%)',
-                boxShadow: 'inset 0 4px 6px rgba(0,0,0,0.3)',
-                borderTop: '2px solid #4B5563',
+                backgroundImage: 'url(/assets/platform.png)',
+                backgroundRepeat: 'repeat-x',
+                backgroundSize: `auto ${ground.height}px`,
+                backgroundPosition: 'left top',
               }}
-            >
-              {/* Carpet texture pattern */}
-              <div style={{
-                width: '100%',
-                height: '100%',
-                backgroundImage: 'repeating-linear-gradient(90deg, transparent 0px, transparent 10px, rgba(255,255,255,0.02) 10px, rgba(255,255,255,0.02) 11px)',
-              }} />
-            </div>
+            />
           ))}
           
-          {/* Floating Platforms (Office Desks) */}
+          {/* Floating Platforms */}
           {platforms.map((platform) => (
-            <div key={platform.id}>
-              {/* Desk surface */}
-              <div
-                className="absolute bg-white rounded-sm shadow-md"
-                style={{
-                  left: platform.x,
-                  top: platform.y,
-                  width: platform.width,
-                  height: platform.height,
-                }}
-              />
-              {/* Wooden legs */}
-              <div
-                className="absolute rounded-sm"
-                style={{
-                  left: platform.x + 10,
-                  top: platform.y + platform.height,
-                  width: 8,
-                  height: 20,
-                  backgroundColor: '#8B4513',
-                }}
-              />
-              <div
-                className="absolute rounded-sm"
-                style={{
-                  left: platform.x + platform.width - 18,
-                  top: platform.y + platform.height,
-                  width: 8,
-                  height: 20,
-                  backgroundColor: '#8B4513',
-                }}
-              />
-            </div>
+            <div
+              key={platform.id}
+              className="absolute"
+              style={{
+                left: platform.x,
+                top: platform.y,
+                width: platform.width,
+                height: platform.height,
+                backgroundImage: 'url(/assets/air-platform.png)',
+                backgroundRepeat: 'repeat-x',
+                backgroundSize: `auto ${platform.height}px`,
+                backgroundPosition: 'left top',
+              }}
+            />
           ))}
           
-          {/* Collectibles (SIP Gold Coins) */}
-          {FIXED_COLLECTIBLES.map(coin => (
-            !collectedCoins.has(coin.id) && (
+          {/* Collectibles (Stock Logos) */}
+          {FIXED_COLLECTIBLES.map(coin => {
+            const stock = STOCK_LOGOS[(coin.id - 1) % STOCK_LOGOS.length];
+            return !collectedCoins.has(coin.id) && (
               <div
                 key={coin.id}
-                className="absolute rounded-full bg-yellow-400 border-4 border-yellow-500 flex items-center justify-center shadow-lg"
+                className="absolute"
                 style={{
                   left: coin.x,
                   top: coin.y,
@@ -879,16 +692,39 @@ export default function App() {
                   height: COIN_SIZE,
                 }}
               >
-                <span className="text-yellow-800 font-bold text-lg">₹</span>
+                <img
+                  src={stock.src}
+                  alt={stock.name}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))',
+                  }}
+                />
+                <div style={{
+                  position: 'absolute',
+                  top: -14,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontSize: 9,
+                  fontWeight: 'bold',
+                  color: '#16a34a',
+                  whiteSpace: 'nowrap',
+                  fontFamily: 'monospace',
+                  textShadow: '0 0 3px rgba(0,0,0,0.6)',
+                }}>
+                  ₹{stock.value.toLocaleString()}
+                </div>
               </div>
-            )
-          ))}
+            );
+          })}
           
           {/* Enemies (Market Bears) */}
           {enemies.map(enemy => (
             <div
               key={enemy.id}
-              className="absolute bg-red-600 rounded flex items-center justify-center shadow-lg"
+              className="absolute"
               style={{
                 left: enemy.x,
                 top: enemy.y,
@@ -896,75 +732,349 @@ export default function App() {
                 height: ENEMY_SIZE,
               }}
             >
-              <span className="text-white text-xl">📉</span>
+              <img
+                src="/assets/bear.png"
+                alt="Bear"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                  imageRendering: 'pixelated',
+                  transform: enemy.direction === 1 ? 'scaleX(-1)' : 'scaleX(1)',
+                }}
+              />
             </div>
           ))}
           
-          {/* Victory Flag at end of map */}
-          <div
-            className="absolute flex flex-col items-center"
-            style={{
-              left: VICTORY_FLAG_X,
-              top: GAME_HEIGHT - FLOOR_HEIGHT - VICTORY_FLAG_HEIGHT,
-            }}
-          >
-            <div className="text-6xl">🏁</div>
-            <div className="text-sm font-bold text-gray-700 bg-white/80 px-2 py-1 rounded mt-2">
-              FINISH
-            </div>
-          </div>
         </div>
         
-        {/* Player (Green Groww Mascot) - stays centered on screen */}
+        {/* Player - Hero Character */}
         <div
-          className="absolute bg-green-500 rounded-lg flex items-center justify-center shadow-lg"
+          className="absolute"
           style={{
             width: PLAYER_SIZE,
             height: PLAYER_SIZE,
             left: playerPos.x,
             top: playerPos.y,
+            opacity: enemyHitCooldownRef.current > 0 ? (Math.floor(enemyHitCooldownRef.current / 8) % 2 === 0 ? 0.3 : 1) : 1,
           }}
         >
-          {/* Simple smile SVG */}
-          <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
-            {/* Eyes */}
-            <circle cx="10" cy="11" r="2" fill="white" />
-            <circle cx="20" cy="11" r="2" fill="white" />
-            {/* Smile */}
-            <path
-              d="M 8 17 Q 15 22 22 17"
-              stroke="white"
-              strokeWidth="2"
-              strokeLinecap="round"
-              fill="none"
-            />
-          </svg>
+          <img
+            src="/assets/player.png"
+            alt="Player"
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              imageRendering: 'pixelated',
+              transform: keysPressed.current['ArrowLeft'] ? 'scaleX(-1)' : 'scaleX(1)',
+            }}
+          />
         </div>
         
-        {/* Fixed UI elements */}
-        <div className="absolute top-4 left-4 text-gray-700 text-sm font-mono bg-white/80 px-3 py-2 rounded shadow-md">
-          <div>← → Move</div>
-          <div>↑ / Space: Jump (x2)</div>
-          <div className="mt-1 text-xs text-green-600">Jumps: {'⬆️'.repeat(jumpsRemaining)}</div>
+        {/* Arrow Key Controls */}
+        <div
+          className="absolute"
+          style={{ top: 12, left: 12, pointerEvents: 'none' }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            {/* Up arrow */}
+            <img
+              src="/assets/arrow-up.png"
+              alt="Up"
+              style={{
+                width: 36,
+                height: 36,
+                imageRendering: 'pixelated',
+                transform: activeKeys.has('ArrowUp') || activeKeys.has(' ') ? 'scale(0.78)' : 'scale(1)',
+                transition: 'transform 0.08s ease-out',
+              }}
+            />
+            {/* Left, Down, Right row */}
+            <div style={{ display: 'flex', gap: 2 }}>
+              <img
+                src="/assets/arrow-left.png"
+                alt="Left"
+                style={{
+                  width: 36,
+                  height: 36,
+                  imageRendering: 'pixelated',
+                  transform: activeKeys.has('ArrowLeft') ? 'scale(0.78)' : 'scale(1)',
+                  transition: 'transform 0.08s ease-out',
+                }}
+              />
+              <img
+                src="/assets/arrow-down.png"
+                alt="Down"
+                style={{
+                  width: 36,
+                  height: 36,
+                  imageRendering: 'pixelated',
+                  transform: activeKeys.has('ArrowDown') ? 'scale(0.78)' : 'scale(1)',
+                  transition: 'transform 0.08s ease-out',
+                }}
+              />
+              <img
+                src="/assets/arrow-right.png"
+                alt="Right"
+                style={{
+                  width: 36,
+                  height: 36,
+                  imageRendering: 'pixelated',
+                  transform: activeKeys.has('ArrowRight') ? 'scale(0.78)' : 'scale(1)',
+                  transition: 'transform 0.08s ease-out',
+                }}
+              />
+            </div>
+          </div>
         </div>
         
         {/* Portfolio Value Score */}
         <div className="absolute top-4 right-4 text-gray-800 font-bold bg-white/90 px-4 py-3 rounded-lg shadow-lg">
           <div className="text-xs text-gray-600">Portfolio Value</div>
           <div className="text-2xl text-green-600">₹{score.toLocaleString()}</div>
-          <div className="text-xs text-gray-500 mt-1">Distance: {Math.floor(distance)}m</div>
+          {targetScore > 0 && (
+            <div className="text-xs text-gray-500 mt-1">
+              Goal: ₹{targetScore.toLocaleString()} ({goalName})
+            </div>
+          )}
+          <div style={{
+            marginTop: 4,
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: '#e5e7eb',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              height: '100%',
+              width: `${Math.min(100, (score / targetScore) * 100)}%`,
+              backgroundColor: '#16a34a',
+              borderRadius: 2,
+              transition: 'width 0.3s',
+            }} />
+          </div>
         </div>
         
+        {/* Start Screen — Goal Selection */}
+        {!gameStarted && (
+          <div
+            className="absolute inset-0"
+            style={{ zIndex: 50 }}
+          >
+            <img
+              src="/assets/start-frame.png"
+              alt="Select Goal"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                imageRendering: 'pixelated',
+              }}
+            />
+            {/* Clickable option areas positioned over the image */}
+            {/* Top-left: Airplane */}
+            <button
+              onClick={() => startWithGoal(GOAL_OPTIONS[0])}
+              style={{
+                position: 'absolute',
+                left: '6%',
+                top: '40%',
+                width: '38%',
+                height: '22%',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                borderRadius: 8,
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.2)')}
+              onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
+            />
+            {/* Top-right: Phone */}
+            <button
+              onClick={() => startWithGoal(GOAL_OPTIONS[1])}
+              style={{
+                position: 'absolute',
+                right: '6%',
+                top: '40%',
+                width: '38%',
+                height: '22%',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                borderRadius: 8,
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.2)')}
+              onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
+            />
+            {/* Bottom-left: Car */}
+            <button
+              onClick={() => startWithGoal(GOAL_OPTIONS[2])}
+              style={{
+                position: 'absolute',
+                left: '6%',
+                top: '68%',
+                width: '38%',
+                height: '22%',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                borderRadius: 8,
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.2)')}
+              onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
+            />
+            {/* Bottom-right: House */}
+            <button
+              onClick={() => startWithGoal(GOAL_OPTIONS[3])}
+              style={{
+                position: 'absolute',
+                right: '6%',
+                top: '68%',
+                width: '38%',
+                height: '22%',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                borderRadius: 8,
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.2)')}
+              onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
+            />
+          </div>
+        )}
+
+        {/* Game Over Modal */}
+        {gameOver && !victory && (
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.85)', zIndex: 50 }}
+          >
+            <div
+              style={{
+                background: '#111',
+                border: '3px solid #00D09C',
+                borderRadius: 20,
+                padding: '36px 32px 28px',
+                width: 340,
+                textAlign: 'center',
+                boxShadow: '0 0 40px rgba(0, 208, 156, 0.15)',
+              }}
+            >
+              {/* GAME OVER title */}
+              <div
+                style={{
+                  fontFamily: 'monospace',
+                  fontSize: 36,
+                  fontWeight: 'bold',
+                  color: '#00D09C',
+                  letterSpacing: 4,
+                  imageRendering: 'pixelated',
+                  marginBottom: 28,
+                  textShadow: '0 0 20px rgba(0, 208, 156, 0.4)',
+                }}
+              >
+                GAME OVER
+              </div>
+
+              {/* Holdings card */}
+              <div
+                style={{
+                  background: '#1E1E1E',
+                  borderRadius: 40,
+                  padding: '16px 24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 14,
+                  marginBottom: 28,
+                }}
+              >
+                {/* Diamond icon */}
+                <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+                  <path d="M18 4L30 16L18 32L6 16L18 4Z" fill="#6C7BFF" />
+                  <path d="M18 4L30 16L18 20L6 16L18 4Z" fill="#8B9AFF" />
+                  <path d="M18 4L24 10L18 16L12 10L18 4Z" fill="#AAB8FF" opacity="0.7" />
+                </svg>
+                <div style={{ textAlign: 'left' }}>
+                  <div
+                    style={{
+                      fontFamily: 'monospace',
+                      fontSize: 11,
+                      fontWeight: 'bold',
+                      color: '#888',
+                      letterSpacing: 2,
+                      marginBottom: 2,
+                    }}
+                  >
+                    HOLDINGS
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'monospace',
+                      fontSize: 24,
+                      fontWeight: 'bold',
+                      color: '#FFF',
+                    }}
+                  >
+                    ₹{score.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Retry button */}
+              <button
+                onClick={() => resetGame(true)}
+                style={{
+                  background: '#6366F1',
+                  border: '3px solid #4B4EC8',
+                  borderRadius: 8,
+                  padding: '14px 0',
+                  width: '100%',
+                  cursor: 'pointer',
+                  fontFamily: 'monospace',
+                  fontSize: 28,
+                  fontWeight: 'bold',
+                  color: '#5EEAD4',
+                  letterSpacing: 6,
+                  imageRendering: 'pixelated',
+                  transition: 'transform 0.15s, box-shadow 0.15s',
+                  boxShadow: '0 4px 0 #3538A0',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 6px 0 #3538A0, 0 0 20px rgba(99,102,241,0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = '0 4px 0 #3538A0';
+                }}
+                onMouseDown={(e) => {
+                  e.currentTarget.style.transform = 'scale(0.97)';
+                  e.currentTarget.style.boxShadow = '0 2px 0 #3538A0';
+                }}
+                onMouseUp={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 6px 0 #3538A0, 0 0 20px rgba(99,102,241,0.4)';
+                }}
+              >
+                RETRY
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Victory Screen Overlay */}
         {victory && victoryAnimPhase >= 3 && (
-          <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/70 flex items-center justify-center" style={{ zIndex: 50 }}>
             <div className="bg-white rounded-2xl p-8 max-w-md text-center shadow-2xl">
               <div className="text-6xl mb-4">🎉</div>
               <h1 className="text-3xl font-bold text-green-600 mb-2">
-                Level Complete!
+                You bought a {goalName}!
               </h1>
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">
-                IPO Successful! 🚀
+              <h2 className="text-xl font-bold text-gray-600 mb-6">
+                Portfolio target of ₹{targetScore.toLocaleString()} reached!
               </h2>
               
               <div className="bg-gray-100 rounded-lg p-4 mb-6">
@@ -973,28 +1083,18 @@ export default function App() {
                   ₹{score.toLocaleString()}
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <div className="text-gray-500">Distance Traveled</div>
-                    <div className="font-bold text-gray-800">{Math.floor(distance)}m</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-500">Coins Collected</div>
-                    <div className="font-bold text-gray-800">{collectedCoins.size}/{FIXED_COLLECTIBLES.length}</div>
-                  </div>
+                <div className="text-sm">
+                  <div className="text-gray-500">Distance Traveled</div>
+                  <div className="font-bold text-gray-800">{Math.floor(distance)}m</div>
                 </div>
               </div>
               
               <button
-                onClick={resetGame}
+                onClick={() => resetGame(true)}
                 className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-lg"
               >
-                🔄 Play Again
+                Play Again
               </button>
-              
-              <div className="mt-4 text-xs text-gray-500">
-                Congratulations on your successful IPO journey! 🏆
-              </div>
             </div>
           </div>
         )}
