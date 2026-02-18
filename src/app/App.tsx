@@ -11,6 +11,45 @@ export default function App() {
   const GAME_WIDTH = 800;
   const GAME_HEIGHT = 400;
 
+  // Preload all game images so they're cached before gameplay
+  const PRELOAD_IMAGES = [
+    '/assets/player-idle.png',
+    '/assets/player-left.png',
+    '/assets/player-right.png',
+    '/assets/bear.png',
+    '/assets/bull.png',
+    '/assets/platform.png',
+    '/assets/air-platform.png',
+    '/assets/background.png',
+    '/assets/arrow-up.png',
+    '/assets/arrow-down.png',
+    '/assets/arrow-left.png',
+    '/assets/arrow-right.png',
+    '/assets/start-frame.png',
+    '/assets/end-airplane.png',
+    '/assets/end-phone.png',
+    '/assets/end-car.png',
+    '/assets/end-house.png',
+    '/assets/hover-airplane.png',
+    '/assets/hover-phone.png',
+    '/assets/hover-car.png',
+    '/assets/hover-house.png',
+    '/assets/logos/ADANIGREEN.png',
+    '/assets/logos/SWIGGY.png',
+    '/assets/logos/JIOFIN.png',
+    '/assets/logos/HINDUNILVR.png',
+    '/assets/logos/PNB.png',
+    '/assets/logos/GODREJPROP.png',
+    '/assets/logos/IOC.png',
+    '/assets/logos/SBILIFE.png',
+  ];
+  useEffect(() => {
+    PRELOAD_IMAGES.forEach(src => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, []);
+
   // Viewport scaling — scale the fixed-resolution game to fill the browser window
   const [viewScale, setViewScale] = useState({ x: 1, y: 1 });
   const updateScale = useCallback(() => {
@@ -877,35 +916,39 @@ export default function App() {
           
         </div>
         
-        {/* Player - Hero Character */}
-        <div
-          className="absolute"
-          style={{
-            width: PLAYER_SIZE,
-            height: PLAYER_SIZE,
-            left: playerPos.x,
-            top: playerPos.y,
-            opacity: enemyHitCooldownRef.current > 0 ? (Math.floor(enemyHitCooldownRef.current / 8) % 2 === 0 ? 0.3 : 1) : 1,
-          }}
-        >
-          <img
-            src={
-              Math.abs(playerVelocity.x) < 0.3
-                ? '/assets/player-idle.png'
-                : Math.floor(walkFrameRef.current / 6) % 2 === 0
-                  ? '/assets/player-left.png'
-                  : '/assets/player-right.png'
-            }
-            alt="Player"
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain',
-              imageRendering: 'pixelated',
-              transform: keysPressed.current['ArrowLeft'] ? 'scaleX(-1)' : 'scaleX(1)',
-            }}
-          />
-        </div>
+        {/* Player - Hero Character — all sprites rendered, visibility toggled to avoid network flicker */}
+        {(() => {
+          const isIdle = Math.abs(playerVelocity.x) < 0.3;
+          const walkFrame = Math.floor(walkFrameRef.current / 6) % 2;
+          const flipX = keysPressed.current['ArrowLeft'] ? 'scaleX(-1)' : 'scaleX(1)';
+          const spriteStyle = (visible: boolean): React.CSSProperties => ({
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            imageRendering: 'pixelated',
+            transform: flipX,
+            visibility: visible ? 'visible' : 'hidden',
+          });
+          return (
+            <div
+              className="absolute"
+              style={{
+                width: PLAYER_SIZE,
+                height: PLAYER_SIZE,
+                left: playerPos.x,
+                top: playerPos.y,
+                opacity: enemyHitCooldownRef.current > 0 ? (Math.floor(enemyHitCooldownRef.current / 8) % 2 === 0 ? 0.3 : 1) : 1,
+              }}
+            >
+              <img src="/assets/player-idle.png" alt="Player" style={spriteStyle(isIdle)} />
+              <img src="/assets/player-left.png" alt="Player" style={spriteStyle(!isIdle && walkFrame === 0)} />
+              <img src="/assets/player-right.png" alt="Player" style={spriteStyle(!isIdle && walkFrame === 1)} />
+            </div>
+          );
+        })()}
         
         {/* Arrow Key Controls */}
         <div
