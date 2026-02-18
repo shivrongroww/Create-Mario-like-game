@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 export default function App() {
   // Game constants
-  const GRAVITY = 0.9;
-  const JUMP_STRENGTH = -14;
+  const GRAVITY = 0.7;
+  const JUMP_STRENGTH = -12;
   const MOVE_SPEED = 5;
+  const ACCELERATION = 0.6;
+  const FRICTION = 0.82;
   const PLAYER_SIZE = 50;
   const GAME_WIDTH = 800;
   const GAME_HEIGHT = 400;
@@ -55,8 +57,10 @@ export default function App() {
   };
 
   type LevelObj = { id: string; type: string; x: number; y: number; width: number; height: number };
-  type Collectible = { id: number; x: number; y: number };
+  type Collectible = { id: number; x: number; y: number; logoIndex: number };
   type EnemyDef = { id: number; x: number; y: number; direction: number; speed: number; minX: number; maxX: number };
+  type Powerup = { id: number; x: number; y: number };
+  const POWERUP_SIZE = 45;
 
   const generateChunk = useCallback((chunkIndex: number) => {
     const baseX = chunkIndex * CHUNK_WIDTH;
@@ -64,13 +68,14 @@ export default function App() {
     const objects: LevelObj[] = [];
     const coins: Collectible[] = [];
     const enemyDefs: EnemyDef[] = [];
+    const powerups: Powerup[] = [];
 
     if (chunkIndex === 0) {
       objects.push({ id: `g-${chunkIndex}-0`, type: 'ground', x: baseX, y: GAME_HEIGHT - FLOOR_HEIGHT, width: CHUNK_WIDTH, height: FLOOR_HEIGHT });
-      coins.push({ id: chunkIndex * 1000 + 1, x: baseX + 250, y: 280 });
-      coins.push({ id: chunkIndex * 1000 + 2, x: baseX + 450, y: 290 });
+      coins.push({ id: chunkIndex * 1000 + 1, x: baseX + 250, y: 280, logoIndex: Math.floor(r(30) * STOCK_LOGOS.length) });
+      coins.push({ id: chunkIndex * 1000 + 2, x: baseX + 450, y: 290, logoIndex: Math.floor(r(31) * STOCK_LOGOS.length) });
       enemyDefs.push({ id: chunkIndex * 1000 + 1, x: baseX + 300, y: GAME_HEIGHT - FLOOR_HEIGHT - ENEMY_SIZE, direction: 1, speed: 2, minX: baseX + 100, maxX: baseX + 450 });
-      return { objects, coins, enemies: enemyDefs };
+      return { objects, coins, enemies: enemyDefs, powerups };
     }
 
     const gapStart = Math.floor(r(1) * 80) + 20;
@@ -100,9 +105,9 @@ export default function App() {
 
     const coinId = chunkIndex * 1000;
     if (groundAfterWidth > 60) {
-      coins.push({ id: coinId + 1, x: baseX + groundAfterStart + 30 + Math.floor(r(6) * (groundAfterWidth - 60)), y: GAME_HEIGHT - FLOOR_HEIGHT - 50 - Math.floor(r(7) * 60) });
+      coins.push({ id: coinId + 1, x: baseX + groundAfterStart + 30 + Math.floor(r(6) * (groundAfterWidth - 60)), y: GAME_HEIGHT - FLOOR_HEIGHT - 50 - Math.floor(r(7) * 60), logoIndex: Math.floor(r(30) * STOCK_LOGOS.length) });
     }
-    coins.push({ id: coinId + 2, x: platX + Math.floor(platW / 2) - 15, y: platY - 40 });
+    coins.push({ id: coinId + 2, x: platX + Math.floor(platW / 2) - 15, y: platY - 40, logoIndex: Math.floor(r(31) * STOCK_LOGOS.length) });
 
     if (r(8) > 0.5 && groundAfterWidth > 80) {
       const eX = baseX + groundAfterStart + 20 + Math.floor(r(9) * (groundAfterWidth - 60));
@@ -117,16 +122,25 @@ export default function App() {
       });
     }
 
-    return { objects, coins, enemies: enemyDefs };
+    // Bull powerup — ~20% chance, placed on a platform
+    if (r(20) > 0.8 && chunkIndex > 1) {
+      powerups.push({ id: coinId + 50, x: platX + Math.floor(platW / 2) - 20, y: platY - POWERUP_SIZE - 5 });
+    }
+
+    return { objects, coins, enemies: enemyDefs, powerups };
   }, []);
 
   // Dynamic level data stored in refs for instant access in the game loop
   const levelObjectsRef = useRef<LevelObj[]>([]);
   const collectiblesRef = useRef<Collectible[]>([]);
+  const powerupsRef = useRef<Powerup[]>([]);
+  const collectedPowerupsRef = useRef<Set<number>>(new Set());
   const generatedChunksRef = useRef<Set<number>>(new Set());
 
   const [levelObjects, setLevelObjects] = useState<LevelObj[]>([]);
   const [collectibles, setCollectibles] = useState<Collectible[]>([]);
+  const [powerups, setPowerups] = useState<Powerup[]>([]);
+  const [collectedPowerups, setCollectedPowerups] = useState<Set<number>>(new Set());
 
   const generateChunksAround = useCallback((offset: number) => {
     const currentChunk = Math.floor(offset / CHUNK_WIDTH);
@@ -140,6 +154,7 @@ export default function App() {
         const chunk = generateChunk(i);
         levelObjectsRef.current = [...levelObjectsRef.current, ...chunk.objects];
         collectiblesRef.current = [...collectiblesRef.current, ...chunk.coins];
+        powerupsRef.current = [...powerupsRef.current, ...chunk.powerups];
         setEnemies(prev => [...prev, ...chunk.enemies]);
         changed = true;
       }
@@ -150,6 +165,7 @@ export default function App() {
     if (cleanupThreshold > 0) {
       levelObjectsRef.current = levelObjectsRef.current.filter(o => o.x + o.width > cleanupThreshold);
       collectiblesRef.current = collectiblesRef.current.filter(c => c.x > cleanupThreshold);
+      powerupsRef.current = powerupsRef.current.filter(p => p.x > cleanupThreshold);
       setEnemies(prev => prev.filter(e => e.maxX > cleanupThreshold));
       for (const ci of generatedChunksRef.current) {
         if (ci < currentChunk - CLEANUP_BEHIND - 1) generatedChunksRef.current.delete(ci);
@@ -160,6 +176,7 @@ export default function App() {
     if (changed) {
       setLevelObjects([...levelObjectsRef.current]);
       setCollectibles([...collectiblesRef.current]);
+      setPowerups([...powerupsRef.current]);
     }
   }, [generateChunk]);
   
@@ -195,6 +212,7 @@ export default function App() {
   const enemyHitCooldownRef = useRef(0);
   const scoreRef = useRef(0);
   const targetScoreRef = useRef(0);
+  const walkFrameRef = useRef(0);
   
   // Update refs when state changes
   useEffect(() => {
@@ -260,8 +278,12 @@ export default function App() {
     generatedChunksRef.current = new Set();
     levelObjectsRef.current = [];
     collectiblesRef.current = [];
+    powerupsRef.current = [];
+    collectedPowerupsRef.current = new Set();
     setLevelObjects([]);
     setCollectibles([]);
+    setPowerups([]);
+    setCollectedPowerups(new Set());
     setEnemies([]);
     generateChunksAround(0);
   }, [generateChunksAround]);
@@ -327,7 +349,7 @@ export default function App() {
         );
         
         if (dist < (PLAYER_SIZE / 2 + COIN_SIZE / 2)) {
-          const stock = STOCK_LOGOS[(coin.id - 1) % STOCK_LOGOS.length];
+          const stock = STOCK_LOGOS[coin.logoIndex ?? 0];
           setCollectedCoins(prev => new Set([...prev, coin.id]));
           collectedCoinsRef.current = new Set([...collectedCoinsRef.current, coin.id]);
           const newScore = scoreRef.current + stock.value;
@@ -344,6 +366,36 @@ export default function App() {
     });
   };
   
+  // Check collision with bull powerups — doubles portfolio
+  const checkPowerupCollision = (worldX: number, worldY: number) => {
+    const playerCenterX = worldX + PLAYER_SIZE / 2;
+    const playerCenterY = worldY + PLAYER_SIZE / 2;
+
+    powerupsRef.current.forEach(pu => {
+      if (!collectedPowerupsRef.current.has(pu.id)) {
+        const puCenterX = pu.x + POWERUP_SIZE / 2;
+        const puCenterY = pu.y + POWERUP_SIZE / 2;
+        const dist = Math.sqrt(
+          Math.pow(playerCenterX - puCenterX, 2) +
+          Math.pow(playerCenterY - puCenterY, 2)
+        );
+        if (dist < (PLAYER_SIZE / 2 + POWERUP_SIZE / 2)) {
+          collectedPowerupsRef.current = new Set([...collectedPowerupsRef.current, pu.id]);
+          setCollectedPowerups(prev => new Set([...prev, pu.id]));
+          const doubled = scoreRef.current * 2;
+          scoreRef.current = doubled;
+          setScore(doubled);
+          playSound(1000, 0.4);
+          if (targetScoreRef.current > 0 && doubled >= targetScoreRef.current) {
+            gameOverRef.current = true;
+            setVictory(true);
+            playSound(600, 0.8);
+          }
+        }
+      }
+    });
+  };
+
   // Check collision with enemies — halves portfolio on hit
   const checkEnemyCollision = (worldX: number, worldY: number, currentEnemies: typeof enemies) => {
     if (gameOverRef.current) return false;
@@ -470,15 +522,19 @@ export default function App() {
       enemiesRef.current = updatedEnemies;
       
       // Update player
-      let newVelX = 0;
+      let newVelX = playerVelocityRef.current.x;
       let newVelY = playerVelocityRef.current.y;
       
-      // Horizontal movement
+      // Horizontal movement with acceleration and friction
       if (keysPressed.current['ArrowLeft']) {
-        newVelX = -MOVE_SPEED;
+        newVelX -= ACCELERATION;
       } else if (keysPressed.current['ArrowRight']) {
-        newVelX = MOVE_SPEED;
+        newVelX += ACCELERATION;
+      } else {
+        newVelX *= FRICTION;
+        if (Math.abs(newVelX) < 0.15) newVelX = 0;
       }
+      newVelX = Math.max(-MOVE_SPEED, Math.min(MOVE_SPEED, newVelX));
       
       // Apply gravity
       newVelY += GRAVITY;
@@ -540,12 +596,24 @@ export default function App() {
       if (!gameOverRef.current) {
         checkCollectibleCollision(worldX, newY);
       }
+
+      // Check bull powerup collision
+      if (!gameOverRef.current) {
+        checkPowerupCollision(worldX, newY);
+      }
       
       // Check enemy collision
       if (!gameOverRef.current) {
         checkEnemyCollision(worldX, newY, updatedEnemies);
       }
       
+      // Update walk animation frame
+      if (Math.abs(newVelX) > 0.3) {
+        walkFrameRef.current++;
+      } else {
+        walkFrameRef.current = 0;
+      }
+
       // Update position and velocity
       if (!gameOverRef.current) {
         setPlayerPos({ x: newX, y: newY });
@@ -638,6 +706,7 @@ export default function App() {
             backgroundPositionX: -(worldOffset * 0.4),
             backgroundPositionY: 0,
             pointerEvents: 'none',
+            filter: 'brightness(0.6) saturate(0.8)',
           }}
         />
         
@@ -690,7 +759,7 @@ export default function App() {
           
           {/* Collectibles (Stock Logos) */}
           {collectibles.map(coin => {
-            const stock = STOCK_LOGOS[(coin.id - 1) % STOCK_LOGOS.length];
+            const stock = STOCK_LOGOS[coin.logoIndex ?? 0];
             return !collectedCoins.has(coin.id) && (
               <div
                 key={coin.id}
@@ -759,6 +828,52 @@ export default function App() {
               />
             </div>
           ))}
+
+          {/* Bull Powerups */}
+          {powerups.map(pu => (
+            !collectedPowerups.has(pu.id) && (
+              <div
+                key={pu.id}
+                className="absolute"
+                style={{
+                  left: pu.x,
+                  top: pu.y,
+                  width: POWERUP_SIZE,
+                  height: POWERUP_SIZE,
+                }}
+              >
+                <img
+                  src="/assets/bull.png"
+                  alt="Bull Powerup"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    imageRendering: 'pixelated',
+                    filter: 'drop-shadow(0 2px 6px rgba(255,180,0,0.6))',
+                  }}
+                />
+                <div style={{
+                  position: 'absolute',
+                  top: -14,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontSize: 7,
+                  fontWeight: 'bold',
+                  color: '#fff',
+                  whiteSpace: 'nowrap',
+                  fontFamily: 'monospace',
+                  backgroundColor: '#e63946',
+                  padding: '1px 5px',
+                  borderRadius: 20,
+                  border: '1px solid #b5202e',
+                  lineHeight: 1.4,
+                }}>
+                  2X
+                </div>
+              </div>
+            )
+          ))}
           
         </div>
         
@@ -774,7 +889,13 @@ export default function App() {
           }}
         >
           <img
-            src="/assets/player.png"
+            src={
+              Math.abs(playerVelocity.x) < 0.3
+                ? '/assets/player-idle.png'
+                : Math.floor(walkFrameRef.current / 6) % 2 === 0
+                  ? '/assets/player-left.png'
+                  : '/assets/player-right.png'
+            }
             alt="Player"
             style={{
               width: '100%',
