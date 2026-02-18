@@ -1067,7 +1067,7 @@ export default function App() {
             className="absolute inset-0 flex items-center justify-center"
             style={{ zIndex: 50, backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
           >
-            <div style={{ position: 'relative', width: '37.5%', maxWidth: 250 }}>
+            <div style={{ position: 'relative', width: '75%', maxWidth: 600 }}>
               <img
                 src="/assets/start-frame.png"
                 alt="Select Goal"
@@ -1079,12 +1079,12 @@ export default function App() {
                   borderRadius: 16,
                 }}
               />
-              {/* Clickable option areas positioned over the image */}
+              {/* 4 buttons in a horizontal row aligned over the image */}
               {[
-                { goal: GOAL_OPTIONS[0], left: '6%', right: undefined, top: '40%', hover: '/assets/hover-airplane.png' },
-                { goal: GOAL_OPTIONS[1], left: undefined, right: '6%', top: '40%', hover: '/assets/hover-phone.png' },
-                { goal: GOAL_OPTIONS[2], left: '6%', right: undefined, top: '68%', hover: '/assets/hover-car.png' },
-                { goal: GOAL_OPTIONS[3], left: undefined, right: '6%', top: '68%', hover: '/assets/hover-house.png' },
+                { goal: GOAL_OPTIONS[0], left: '4.5%', hover: '/assets/hover-airplane.png' },
+                { goal: GOAL_OPTIONS[1], left: '28%', hover: '/assets/hover-phone.png' },
+                { goal: GOAL_OPTIONS[2], left: '51.5%', hover: '/assets/hover-car.png' },
+                { goal: GOAL_OPTIONS[3], left: '75%', hover: '/assets/hover-house.png' },
               ].map((btn, idx) => (
                 <button
                   key={idx}
@@ -1092,10 +1092,9 @@ export default function App() {
                   style={{
                     position: 'absolute',
                     left: btn.left,
-                    right: btn.right,
-                    top: btn.top,
-                    width: '38%',
-                    height: '22%',
+                    top: '66%',
+                    width: '21.5%',
+                    height: '20.25%',
                     background: 'transparent',
                     border: 'none',
                     cursor: 'pointer',
@@ -1109,6 +1108,12 @@ export default function App() {
                   onMouseLeave={(e) => {
                     const img = e.currentTarget.querySelector('img') as HTMLImageElement;
                     if (img) img.style.opacity = '0';
+                  }}
+                  onMouseDown={(e) => {
+                    e.currentTarget.style.transform = 'scale(0.95)';
+                  }}
+                  onMouseUp={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
                   }}
                 >
                   <img
