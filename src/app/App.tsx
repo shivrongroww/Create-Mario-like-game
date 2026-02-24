@@ -2,11 +2,9 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 export default function App() {
   // Game constants
-  const GRAVITY = 0.7;
+  const GRAVITY = 0.5;
   const JUMP_STRENGTH = -12;
   const MOVE_SPEED = 5;
-  const ACCELERATION = 0.6;
-  const FRICTION = 0.82;
   const PLAYER_SIZE = 50;
   const GAME_WIDTH = 800;
   const GAME_HEIGHT = 400;
@@ -181,6 +179,24 @@ export default function App() {
   const [powerups, setPowerups] = useState<Powerup[]>([]);
   const [collectedPowerups, setCollectedPowerups] = useState<Set<number>>(new Set());
 
+  const mergeGroundSegments = (objects: LevelObj[]): LevelObj[] => {
+    const grounds = objects.filter(o => o.type === 'ground').sort((a, b) => a.x - b.x);
+    const others = objects.filter(o => o.type !== 'ground');
+    const merged: LevelObj[] = [];
+
+    for (const g of grounds) {
+      const last = merged[merged.length - 1];
+      if (last && last.y === g.y && Math.abs((last.x + last.width) - g.x) < 2) {
+        last.width = (g.x + g.width) - last.x;
+        last.id = last.id + '+' + g.id;
+      } else {
+        merged.push({ ...g });
+      }
+    }
+
+    return [...others, ...merged];
+  };
+
   const generateChunksAround = useCallback((offset: number) => {
     const currentChunk = Math.floor(offset / CHUNK_WIDTH);
     const startChunk = Math.max(0, currentChunk - 1);
@@ -213,6 +229,7 @@ export default function App() {
     }
 
     if (changed) {
+      levelObjectsRef.current = mergeGroundSegments(levelObjectsRef.current);
       setLevelObjects([...levelObjectsRef.current]);
       setCollectibles([...collectiblesRef.current]);
       setPowerups([...powerupsRef.current]);
@@ -317,12 +334,16 @@ export default function App() {
     scoreRef.current = 0;
     setGameStarted(true);
     setPlayerPos({ x: 100, y: 0 });
+    playerPosRef.current = { x: 100, y: 0 };
     setPlayerVelocity({ x: 0, y: 0 });
+    playerVelocityRef.current = { x: 0, y: 0 };
     setDistance(0);
     setGameOver(false);
     gameOverRef.current = false;
     enemyHitCooldownRef.current = 0;
     setJumpsRemaining(2);
+    jumpsRemainingRef.current = 2;
+    isGroundedRef.current = false;
     setWorldOffset(0);
     worldOffsetRef.current = 0;
     setCollectedCoins(new Set());
@@ -336,7 +357,9 @@ export default function App() {
   const resetGame = (showStart = false) => {
     setGameStarted(!showStart);
     setPlayerPos({ x: 100, y: 0 });
+    playerPosRef.current = { x: 100, y: 0 };
     setPlayerVelocity({ x: 0, y: 0 });
+    playerVelocityRef.current = { x: 0, y: 0 };
     setScore(0);
     scoreRef.current = 0;
     setDistance(0);
@@ -344,6 +367,8 @@ export default function App() {
     gameOverRef.current = false;
     enemyHitCooldownRef.current = 0;
     setJumpsRemaining(2);
+    jumpsRemainingRef.current = 2;
+    isGroundedRef.current = false;
     setWorldOffset(0);
     worldOffsetRef.current = 0;
     setCollectedCoins(new Set());
@@ -544,19 +569,14 @@ export default function App() {
       enemiesRef.current = updatedEnemies;
       
       // Update player
-      let newVelX = playerVelocityRef.current.x;
+      let newVelX = 0;
       let newVelY = playerVelocityRef.current.y;
       
-      // Horizontal movement with acceleration and friction
       if (keysPressed.current['ArrowLeft']) {
-        newVelX -= ACCELERATION;
+        newVelX = -MOVE_SPEED;
       } else if (keysPressed.current['ArrowRight']) {
-        newVelX += ACCELERATION;
-      } else {
-        newVelX *= FRICTION;
-        if (Math.abs(newVelX) < 0.15) newVelX = 0;
+        newVelX = MOVE_SPEED;
       }
-      newVelX = Math.max(-MOVE_SPEED, Math.min(MOVE_SPEED, newVelX));
       
       // Apply gravity
       newVelY += GRAVITY;
@@ -776,9 +796,8 @@ export default function App() {
                 width: platform.width,
                 height: platform.height,
                 backgroundImage: 'url(/assets/air-platform.png)',
-                backgroundRepeat: 'repeat-x',
-                backgroundSize: `auto ${platform.height}px`,
-                backgroundPosition: 'left top',
+                backgroundRepeat: 'no-repeat',
+                backgroundSize: '100% 100%',
               }}
             />
           ))}
