@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 export default function App() {
   // Game constants
@@ -239,7 +239,7 @@ export default function App() {
   const [enemies, setEnemies] = useState<EnemyDef[]>([]);
   
   const keysPressed = useRef<{ [key: string]: boolean }>({});
-  const gameLoopRef = useRef<number>();
+  const gameLoopRef = useRef<number | undefined>(undefined);
   const gameOverRef = useRef(false);
   const enemiesRef = useRef(enemies);
   const playerPosRef = useRef(playerPos);
@@ -258,29 +258,10 @@ export default function App() {
     enemiesRef.current = enemies;
   }, [enemies]);
   
-  useEffect(() => {
-    playerPosRef.current = playerPos;
-  }, [playerPos]);
-  
-  useEffect(() => {
-    playerVelocityRef.current = playerVelocity;
-  }, [playerVelocity]);
-  
-  useEffect(() => {
-    isGroundedRef.current = isGrounded;
-  }, [isGrounded]);
-  
-  useEffect(() => {
-    jumpsRemainingRef.current = jumpsRemaining;
-  }, [jumpsRemaining]);
-  
-  useEffect(() => {
-    worldOffsetRef.current = worldOffset;
-  }, [worldOffset]);
-  
-  useEffect(() => {
-    collectedCoinsRef.current = collectedCoins;
-  }, [collectedCoins]);
+  // playerPosRef, playerVelocityRef, isGroundedRef, jumpsRemainingRef,
+  // worldOffsetRef, and collectedCoinsRef are all updated synchronously
+  // at the point of mutation (game loop / keydown handler) to avoid
+  // stale-ref race conditions between requestAnimationFrame and React renders.
 
   useEffect(() => {
     scoreRef.current = score;
@@ -512,8 +493,10 @@ export default function App() {
       
       // Jump - only on initial key press (not held)
       if ((e.key === 'ArrowUp' || e.key === ' ') && !wasPressed && !gameOver && jumpsRemainingRef.current > 0) {
+        playerVelocityRef.current = { ...playerVelocityRef.current, y: JUMP_STRENGTH };
+        jumpsRemainingRef.current -= 1;
         setPlayerVelocity(prev => ({ ...prev, y: JUMP_STRENGTH }));
-        setJumpsRemaining(prev => prev - 1);
+        setJumpsRemaining(jumpsRemainingRef.current);
         playSound(400, 0.1);
       }
     };
@@ -626,9 +609,11 @@ export default function App() {
       
       // Reset jumps when grounded
       if (grounded && !isGroundedRef.current) {
+        jumpsRemainingRef.current = 2;
         setJumpsRemaining(2);
       }
       
+      isGroundedRef.current = grounded;
       setIsGrounded(grounded);
       
       // Check collectible collision
@@ -653,8 +638,10 @@ export default function App() {
         walkFrameRef.current = 0;
       }
 
-      // Update position and velocity
+      // Update refs synchronously so the next frame always reads fresh values
       if (!gameOverRef.current) {
+        playerPosRef.current = { x: newX, y: newY };
+        playerVelocityRef.current = { x: newVelX, y: newVelY };
         setPlayerPos({ x: newX, y: newY });
         setPlayerVelocity({ x: newVelX, y: newVelY });
       }
